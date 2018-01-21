@@ -9,12 +9,12 @@
 #include <math.h>
 #include <iostream>
 
-typedef struct Pixel {
+struct Pixel {
     int x = 0;
     int y = 0;
     QColor color;
 
-} Pixel;
+};
 
 namespace Ui {
 
@@ -43,6 +43,8 @@ private:
 
     float countScale();
     float countRotation();
+
+    bool helperFind(Pixel *pixel);
 
 private slots:
     void handleBtnImg1();

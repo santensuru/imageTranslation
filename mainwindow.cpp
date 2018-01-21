@@ -7,6 +7,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->btnExec->setEnabled(false);
+
     // Connect button signal to appropriate slot
     connect(ui->btnImg1, SIGNAL (released()), this, SLOT (handleBtnImg1()));
     connect(ui->btnImg2, SIGNAL (released()), this, SLOT (handleBtnImg2()));
@@ -27,6 +29,9 @@ void MainWindow::handleBtnImg1()
                 tr("PNG (*.png);;JPEG (*.jpg *.jpeg)" )
                 );
 
+    if (imagePath.isEmpty())
+        return;
+
     imageObject1 = new QImage();
     imageObject1->load(imagePath);
 
@@ -36,6 +41,13 @@ void MainWindow::handleBtnImg1()
     scene1->addPixmap(image1);
     scene1->setSceneRect(image1.rect());
     ui->img1->setScene(scene1);
+
+    ui->btnImg1->setEnabled(false);
+
+    if (ui->btnImg2->isEnabled() == false)
+    {
+        ui->btnExec->setEnabled(true);
+    }
 }
 
 void MainWindow::handleBtnImg2()
@@ -47,6 +59,9 @@ void MainWindow::handleBtnImg2()
                 tr("PNG (*.png);;JPEG (*.jpg *.jpeg)" )
                 );
 
+    if (imagePath.isEmpty())
+        return;
+
     imageObject2 = new QImage();
     imageObject2->load(imagePath);
 
@@ -56,17 +71,25 @@ void MainWindow::handleBtnImg2()
     scene2->addPixmap(image2);
     scene2->setSceneRect(image2.rect());
     ui->img2->setScene(scene2);
+
+    ui->btnImg2->setEnabled(false);
+
+    if (ui->btnImg1->isEnabled() == false)
+    {
+        ui->btnExec->setEnabled(true);
+    }
 }
 
 void MainWindow::getRandomLocations()
 {
+    locations.clear();
+
     int w = imageObject1->width();
     int h = imageObject1->height();
 
     qsrand(QDateTime::currentMSecsSinceEpoch() / 1000);
 
-
-    int vertexs = 3;
+    int vertexs = 2;
     for (int i=0; i<vertexs; i++)
     {
         int x = qrand() % w;
@@ -74,7 +97,7 @@ void MainWindow::getRandomLocations()
 
         if (imageObject1->pixelColor(x, y).alpha() == 0)
         {
-            vertexs--;
+            i--;
             continue;
         }
 
@@ -83,12 +106,22 @@ void MainWindow::getRandomLocations()
         pixel.y = y;
         pixel.color = imageObject1->pixelColor(x, y);
 
-        locations.push_back(pixel);
+        if (helperFind(&pixel))
+        {
+            i--;
+            continue;
+        }
+        else
+        {
+            locations.push_back(pixel);
+        }
     }
 }
 
 void MainWindow::searchSimilarPixels()
 {
+    pairLocations.clear();
+
     int w = imageObject2->width();
     int h = imageObject2->height();
 
@@ -175,10 +208,10 @@ void MainWindow::handleBtnExec()
     getRandomLocations();
     searchSimilarPixels();
 
-    QString result = "Scale" + QString::number(countScale()) + "\n";
-    result += "Rotation" + QString::number(countRotation()) + "\n";
+    QString result = "Scale: " + QString::number(countScale()) + "\n";
+    result += "Rotation: " + QString::number(countRotation()) + " radian\n";
 
-    //ui->result->document()->setPlainText(result);
+    ui->result->document()->setPlainText(result);
     std::cout << result.toStdString();
 }
 
@@ -195,4 +228,17 @@ void MainWindow::handleBtnExec()
  * count scale
  * count rotate
  *
- * /
+ */
+
+bool MainWindow::helperFind(Pixel *pixel)
+{
+    for (size_t i=0; i<locations.size(); i++)
+    {
+        if (locations.at(i).x == (*pixel).x && locations.at(i).y == (*pixel).y)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
