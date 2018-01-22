@@ -157,6 +157,7 @@ void MainWindow::searchSimilarPixels()
     int w = imageObject2->width();
     int h = imageObject2->height();
 
+    /*
     size_t k = 0;
     for (int i=2; i<w-3; i++)
     {
@@ -198,6 +199,56 @@ void MainWindow::searchSimilarPixels()
             }
         }
     }
+    */
+
+    Pixel temp;
+    bool flag = false;
+    for (size_t k=0; k<locations.size(); k++)
+    {
+        for (int i=2; i<w-3; i++)
+        {
+            for (int j=2; j<h-3; j++)
+            {
+
+                float neightbour = 0.0f;
+                for (int l=i-2; l<i+3; l++)
+                {
+                    for (int m=j-2; m<j+3; m++)
+                    {
+                        if (l != i && m != j)
+                        {
+                            neightbour += qGray(imageObject2->pixel(l, m));
+                        }
+                    }
+                }
+
+                Pixel pixel;
+                pixel.x = i;
+                pixel.y = j;
+                pixel.color = imageObject2->pixelColor(i, j);
+                pixel.neightbour = neightbour / 24.0f;
+
+                //std::cout<< pixel.neightbour <<  " " << locations.at(k).neightbour << std::endl;
+
+                if (pixel.color == locations.at(k).color &&
+                        (pixel.neightbour <= APPROXIMATION + locations.at(k).neightbour &&
+                         pixel.neightbour >= locations.at(k).neightbour - APPROXIMATION))
+                {
+                    if (!flag)
+                    {
+                        flag = true;
+                        temp = pixel;
+                    }
+                    else if (pixel.neightbour - locations.at(k).neightbour < temp.neightbour - locations.at(k).neightbour)
+                        temp = pixel;
+                }
+            }
+        }
+
+        pairLocations.push_back(temp);
+        ui->img2->scene()->addEllipse(temp.x - 2, temp.y - 2, 4, 4, QPen(Qt::red, 2));
+    }
+
 }
 
 float MainWindow::countScale()
