@@ -9,11 +9,14 @@
 #include <math.h>
 #include <iostream>
 
+#define APPROXIMATION 10.0f
+
 struct Pixel {
     int x = 0;
     int y = 0;
     QColor color;
 
+    float neightbour = 0.0f;
 };
 
 namespace Ui {
@@ -34,6 +37,8 @@ private:
     QImage *imageObject1, *imageObject2;
     QPixmap image1, image2;
     QGraphicsScene *scene1, *scene2;
+
+    void convertToGrayscale(QImage *imageObject);
 
     std::vector<Pixel> locations;
     void getRandomLocations();

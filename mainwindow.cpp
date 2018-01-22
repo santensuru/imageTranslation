@@ -80,22 +80,39 @@ void MainWindow::handleBtnImg2()
     }
 }
 
+void MainWindow::convertToGrayscale(QImage *imageObject)
+{
+    for (int ii = 0; ii < (*imageObject).height(); ii++) {
+        uchar* scan = (*imageObject).scanLine(ii);
+        int depth =4;
+        for (int jj = 0; jj < (*imageObject).width(); jj++) {
+
+            QRgb* rgbpixel = reinterpret_cast<QRgb*>(scan + jj*depth);
+            int gray = qGray(*rgbpixel);
+            *rgbpixel = QColor(gray, gray, gray).rgba();
+        }
+    }
+}
+
 void MainWindow::getRandomLocations()
 {
     locations.clear();
 
-    int w = imageObject1->width();
-    int h = imageObject1->height();
+    int w = imageObject1->width() - 4;
+    int h = imageObject1->height() - 4;
 
     qsrand(QDateTime::currentMSecsSinceEpoch() / 1000);
 
     int vertexs = 2;
     for (int i=0; i<vertexs; i++)
     {
-        int x = qrand() % w;
-        int y = qrand() % h;
+        int x = qrand() % w + 2;
+        int y = qrand() % h + 2;
 
-        if (imageObject1->pixelColor(x, y).alpha() == 0)
+        //std::cout<< qAlpha(imageObject1->pixel(0, 0)) << std::endl;
+        //std::cout<< qAlpha(imageObject1->pixel(w/2, h/2)) << std::endl;
+
+        if (qAlpha(imageObject1->pixel(x, y)) == 0)
         {
             i--;
             continue;
@@ -106,6 +123,20 @@ void MainWindow::getRandomLocations()
         pixel.y = y;
         pixel.color = imageObject1->pixelColor(x, y);
 
+        float neightbour = 0.0f;
+        for (int j=x-2; j<x+3; j++)
+        {
+            for (int k=y-2; k<y+3; k++)
+            {
+                if (j != x && k != y)
+                {
+                    neightbour += qGray(imageObject1->pixel(j, k));
+                }
+            }
+        }
+
+        pixel.neightbour = neightbour / 24.0f;
+
         if (helperFind(&pixel))
         {
             i--;
@@ -114,6 +145,7 @@ void MainWindow::getRandomLocations()
         else
         {
             locations.push_back(pixel);
+            ui->img1->scene()->addEllipse(pixel.x - 2, pixel.y - 2, 4, 4, QPen(Qt::red, 2));
         }
     }
 }
@@ -126,23 +158,41 @@ void MainWindow::searchSimilarPixels()
     int h = imageObject2->height();
 
     size_t k = 0;
-    for (int i=0; i<w; i++)
+    for (int i=2; i<w-3; i++)
     {
-        for (int j=0; j<h; j++)
+        for (int j=2; j<h-3; j++)
         {
             if (k == locations.size())
             {
                 break;
             }
 
-            if (imageObject2->pixelColor(i, j) == locations.at(k).color)
+            float neightbour = 0.0f;
+            for (int l=i-2; l<i+3; l++)
             {
-                Pixel pixel;
-                pixel.x = i;
-                pixel.y = j;
-                pixel.color = imageObject1->pixelColor(i, j);
+                for (int m=j-2; m<j+3; m++)
+                {
+                    if (l != i && m != j)
+                    {
+                        neightbour += qGray(imageObject2->pixel(l, m));
+                    }
+                }
+            }
 
+            Pixel pixel;
+            pixel.x = i;
+            pixel.y = j;
+            pixel.color = imageObject2->pixelColor(i, j);
+            pixel.neightbour = neightbour / 24.0f;
+
+            std::cout<< pixel.neightbour <<  " " << locations.at(k).neightbour << std::endl;
+
+            if (pixel.color == locations.at(k).color &&
+                    (pixel.neightbour <= APPROXIMATION + locations.at(k).neightbour &&
+                     pixel.neightbour >= locations.at(k).neightbour - APPROXIMATION))
+            {
                 pairLocations.push_back(pixel);
+                ui->img2->scene()->addEllipse(pixel.x - 2, pixel.y - 2, 4, 4, QPen(Qt::red, 1));
 
                 k++;
             }
@@ -167,11 +217,11 @@ float MainWindow::countScale()
         float d1 = ( sqrt(point1.x*point1.x + point1.y*point1.y) * sqrt(based1.x*based1.x + based1.y*based1.y) );
         float d2 = ( sqrt(point2.x*point2.x + point2.y*point2.y) * sqrt(based2.x*based2.x + based2.y*based2.y) );
 
-        float s = d1/d2;
+        float s = d2/d1;
         countScale += s;
     }
 
-    return countScale/locations.size();
+    return countScale/(locations.size()-1);
 }
 
 float MainWindow::countRotation()
@@ -197,22 +247,44 @@ float MainWindow::countRotation()
         int y2 = point2.y-based2.y;
 
         float s = (x1*x2 + y1*y2) / ( sqrt(x1*x1 + y1*y1) * sqrt(x2*x2 + y2*y2) );
-        countDegree += acos(s);
+        countDegree -= acos(s);
     }
 
-    return countDegree/locations.size();
+    return countDegree/(locations.size()-1);
 }
 
 void MainWindow::handleBtnExec()
 {
+    QString result = "";
+
+    while(true){
+
+        ui->img1->clearMask();
+        ui->img2->clearMask();
+
+    //convert to grayscale
+    //convertToGrayscale(&(*imageObject1));
+    //convertToGrayscale(&(*imageObject2));
+
     getRandomLocations();
     searchSimilarPixels();
 
-    QString result = "Scale: " + QString::number(countScale()) + "\n";
-    result += "Rotation: " + QString::number(countRotation()) + " radian\n";
+    float scale = countScale();
+    float radian = countRotation();
+
+    result += "Scale: " + QString::number(scale) + "\n";
+    result += "Rotation: " + QString::number(radian) + " radian";
+
+    float degree = radian * 180.0f * 7.0f / 22.0f;
+
+    result += " = ~" + QString::number(degree) + " degree\n";
 
     ui->result->document()->setPlainText(result);
     std::cout << result.toStdString();
+
+    //if (scale < 1)
+        break;
+    }
 }
 
 // how to solve
