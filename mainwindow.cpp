@@ -185,14 +185,14 @@ void MainWindow::searchSimilarPixels()
             pixel.color = imageObject2->pixelColor(i, j);
             pixel.neightbour = neightbour / 24.0f;
 
-            std::cout<< pixel.neightbour <<  " " << locations.at(k).neightbour << std::endl;
+            //std::cout<< pixel.neightbour <<  " " << locations.at(k).neightbour << std::endl;
 
             if (pixel.color == locations.at(k).color &&
                     (pixel.neightbour <= APPROXIMATION + locations.at(k).neightbour &&
                      pixel.neightbour >= locations.at(k).neightbour - APPROXIMATION))
             {
                 pairLocations.push_back(pixel);
-                ui->img2->scene()->addEllipse(pixel.x - 2, pixel.y - 2, 4, 4, QPen(Qt::red, 1));
+                ui->img2->scene()->addEllipse(pixel.x - 2, pixel.y - 2, 4, 4, QPen(Qt::red, 2));
 
                 k++;
             }
@@ -214,8 +214,8 @@ float MainWindow::countScale()
         Pixel point1 = locations.at(i);
         Pixel point2 = pairLocations.at(i);
 
-        float d1 = ( sqrt(point1.x*point1.x + point1.y*point1.y) * sqrt(based1.x*based1.x + based1.y*based1.y) );
-        float d2 = ( sqrt(point2.x*point2.x + point2.y*point2.y) * sqrt(based2.x*based2.x + based2.y*based2.y) );
+        float d1 = sqrt((point1.x-based1.x) * (point1.x-based1.x) + (point1.y-based1.y) * (point1.y-based1.y));
+        float d2 = sqrt((point2.x-based2.x) * (point2.x-based2.x) + (point2.y-based2.y) * (point2.y-based2.y));
 
         float s = d2/d1;
         countScale += s;
@@ -259,8 +259,16 @@ void MainWindow::handleBtnExec()
 
     while(true){
 
-        ui->img1->clearMask();
-        ui->img2->clearMask();
+        ui->img1->scene()->clear();
+        ui->img2->scene()->clear();
+
+        scene1->addPixmap(image1);
+        scene1->setSceneRect(image1.rect());
+        ui->img1->setScene(scene1);
+
+        scene2->addPixmap(image2);
+        scene2->setSceneRect(image2.rect());
+        ui->img2->setScene(scene2);
 
     //convert to grayscale
     //convertToGrayscale(&(*imageObject1));
